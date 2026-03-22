@@ -315,11 +315,11 @@
       // The environment will automatically provide a valid key for the preview.
       // For your external Netlify/GitHub deployment, you should restore your key: 
       // const apiKey = "AIzaSyBYz_03p35at10nsVdYWV7b3Hb7i3ddtdE";
-      const apiKey = ""; 
+      const apiKey = "AIzaSyBYz_03p35at10nsVdYWV7b3Hb7i3ddtdE"; 
       
       // Supported model name for this preview environment. 
       // For your external deployment with your own key, use "gemini-1.5-flash".
-      const modelName = "gemini-2.5-flash-preview-09-2025";
+      const modelName = "gemini-2.5-flash";
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
 
       const fetchWithRetry = async (url, options, retries = 5, delay = 1000) => {
