@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    :root {
+      --spotify-green: #1DB954;
+      --bg-dark: #121212;
+      --card-bg: #181818;
+      --text-main: #FFFFFF;
+      --text-dim: #B3B3B3;
+      --accent: #BB86FC;
+    }
+    body { 
+      background-color: var(--bg-dark); 
+      color: var(--text-main); 
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      margin: 0;
+      display: flex;
+      justify-content: center;
+      padding: 10px;
+      min-height: 100vh;
+    }
+    .container { max-width: 650px; width: 100%; margin-top: 20px; }
+    .card { background: var(--card-bg); padding: 32px; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.6); }
+    h1 { font-size: 32px; margin-bottom: 12px; letter-spacing: -1px; }
+    p.subtitle { color: var(--text-dim); margin-bottom: 10px; line-height: 1.6; font-size: 16px; }
+    p.instruction { color: var(--accent); font-size: 14px; font-weight: 500; margin-bottom: 30px; line-height: 1.4; }
+    
+    .btn-primary { 
+      background: var(--spotify-green); color: black; border: none; 
+      padding: 18px 32px; border-radius: 40px; font-weight: bold; 
+      cursor: pointer; width: 100%; font-size: 18px;
+      transition: transform 0.2s, background 0.2s;
+    }
+    .btn-primary:hover { transform: scale(1.02); background: #1ed760; }
+    .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+    .question-header { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 24px; }
+    .question-icon { font-size: 32px; line-height: 1; }
+    .question-box h2 { font-size: 22px; margin: 0; line-height: 1.3; }
+    
+    .option-list { display: grid; gap: 10px; margin-bottom: 30px; }
+    .option-btn {
+      background: #2a2a2a; color: white; border: 2px solid transparent;
+      padding: 16px; border-radius: 10px; text-align: left; cursor: pointer;
+      font-size: 15px; transition: all 0.2s; display: flex; align-items: center;
+      gap: 12px;
+    }
+    .option-btn:hover { background: #333; }
+    .option-btn.selected { border-color: var(--spotify-green); background: #333; }
+    
+    .progress-container { margin-bottom: 30px; }
+    .progress-bg { background: #333; height: 6px; border-radius: 3px; overflow: hidden; }
+    .progress-fill { background: var(--spotify-green); height: 100%; transition: width 0.4s ease; }
+    .progress-text { color: var(--text-dim); font-size: 12px; margin-top: 8px; text-align: right; }
+
+    /* Results Persona Styles */
+    .persona-tag { background: var(--accent); color: black; padding: 4px 12px; border-radius: 20px; font-size: 14px; font-weight: bold; display: inline-block; margin-bottom: 10px; }
+    .personality-summary { background: rgba(255, 255, 255, 0.05); border-radius: 12px; padding: 20px; margin-bottom: 24px; line-height: 1.6; color: #eee; font-size: 15px; border-left: 3px solid var(--accent); }
+    .trait-card { background: #252525; padding: 18px; border-radius: 12px; margin-bottom: 15px; border: 1px solid #333; }
+    .trait-header { display: flex; justify-content: space-between; margin-bottom: 10px; align-items: center; }
+    .trait-label { font-size: 17px; font-weight: bold; display: flex; align-items: center; gap: 8px; }
+    .trait-score { font-size: 14px; font-weight: bold; color: var(--spotify-green); }
+    .bar-bg { background: #444; height: 8px; border-radius: 4px; margin-bottom: 10px; overflow: hidden; }
+    .bar-fill { height: 100%; background: var(--spotify-green); border-radius: 4px; }
+    .insight-text { font-size: 14px; color: var(--text-dim); line-height: 1.5; }
+    
+    .research-note { 
+      background: rgba(29, 185, 84, 0.1); border: 1px solid rgba(29, 185, 84, 0.3); 
+      padding: 16px; border-radius: 12px; font-size: 14px; margin-top: 30px; line-height: 1.5;
+    }
+    .research-note strong { color: var(--spotify-green); display: block; margin-bottom: 4px; }
+
+    .loader { text-align: center; padding: 60px 20px; }
+    .spinner { 
+      border: 5px solid rgba(255,255,255,0.1); border-left-color: var(--spotify-green);
+      border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite;
+      margin: 0 auto 24px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <div class="container" id="app"></div>
+
+  <script>
+    const QUESTIONS = [
+      { id: "q1", icon: "🎧", text: "Which genre do you usually listen to most often?", options: [
+        { label: "🎤 Rap, Hip Hop, or Drill", value: "rap" },
+        { label: "✨ Pop, Top 40, or K-Pop", value: "pop" },
+        { label: "🎸 Rock, Heavy Metal, or Punk", value: "rock_metal" },
+        { label: "🌙 Indie or Alternative", value: "indie" },
+        { label: "🎷 R&B, Soul, or Funk", value: "soul_blues" },
+        { label: "🎺 Jazz or Blues", value: "jazz_blues" },
+        { label: "🤠 Country, Folk, or Bluegrass", value: "country_folk" },
+        { label: "🏝️ Reggae or Dancehall", value: "reggae" },
+        { label: "🕺 EDM, House, or Dance", value: "dance" },
+        { label: "🎻 Classical or Opera", value: "classical_opera" }
+      ]},
+      { id: "q2", icon: "⚡", text: "How much intense or aggressive music is in your rotation (like Metal or Hardcore Rap)?", options: [
+        { label: "🔇 None at all", value: "low_intensity" },
+        { label: "🔉 A little bit when I want energy", value: "mid_intensity" },
+        { label: "🔊 I listen to intense music frequently", value: "high_intensity" }
+      ]},
+      { id: "q3", icon: "🧐", text: "When you hear a new song, what usually grabs your attention first?", options: [
+        { label: "📖 The lyrics and the story being told", value: "verbal" },
+        { label: "🎼 The melody, harmonies, and vocal tone", value: "melodic" },
+        { label: "🌫️ The overall mood, vibe, or atmosphere", value: "atmospheric" },
+        { label: "🥁 The beat, the rhythm, and the production", value: "visceral" },
+        { label: "🛠️ The technical skill and instrumentation", value: "logical" }
+      ]},
+      { id: "q4", icon: "👤", text: "Which of these artist 'styles' matches your listening habits best?", options: [
+        { label: "🗣️ Lyric-driven and social (e.g., Kendrick, Drake)", value: "rap_archetype" },
+        { label: "☁️ Atmospheric and sensitive (e.g., Billie Eilish, Mitski)", value: "indie_archetype" },
+        { label: "☀️ Melodic and upbeat (e.g., Taylor Swift, Ariana Grande)", value: "pop_archetype" },
+        { label: "🔥 Rhythmic and energetic (e.g., Bad Bunny, Burna Boy)", value: "dance_archetype" },
+        { label: "🤘 Raw, intense, or theatrical (e.g., Metallica, Queen)", value: "rock_archetype" },
+        { label: "🕰️ Classic or Legacy artists (e.g., Beatles, 2Pac, Sinatra)", value: "classic_archetype" },
+        { label: "❓ My favorite styles aren't listed here", value: "other_archetype" }
+      ]},
+      { id: "q5", icon: "📁", text: "How do you typically manage your music library?", options: [
+        { label: "📋 I have specific playlists for different moods", value: "high_conscientious" },
+        { label: "🔀 I mostly shuffle my 'Liked Songs'", value: "low_conscientious" },
+        { label: "💿 I prefer to listen to full albums", value: "album_listener" }
+      ]},
+      { id: "q6", icon: "🎻", text: "How often do you listen to sophisticated genres like Jazz, Classical, or Opera?", options: [
+        { label: "✅ Regularly—I enjoy the complexity", value: "soph_high" },
+        { label: "⚖️ Occasionally as background music", value: "soph_mid" },
+        { label: "❌ Rarely or never", value: "soph_low" }
+      ]},
+      { id: "q7", icon: "✍️", text: "Do you listen to music to help you focus while working or studying?", options: [
+        { label: "📚 Yes, I usually need music to be productive", value: "hardworking" },
+        { label: "⚖️ Sometimes, depending on the task at hand", value: "sometimes_focus" },
+        { label: "🔇 No, I find music distracting when working", value: "leisure" },
+        { label: "💪 I mainly use music for physical tasks or exercise", value: "motivation" }
+      ]},
+      { id: "q8", icon: "📈", text: "How do you feel when a song you like becomes a major viral hit?", options: [
+        { label: "🥳 I enjoy that more people are discovering it", value: "social_out" },
+        { label: "📉 I lose interest once it becomes too mainstream", value: "indie_intro" },
+        { label: "😑 My opinion of the song stays the same", value: "stable" }
+      ]},
+      { id: "q9", icon: "🕯️", text: "Which genre is your preferred choice for relaxing?", options: [
+        { label: "🎸 Soft Rock, Acoustic, or Folk", value: "mellow" },
+        { label: "☕ Soul, R&B, or Lofi", value: "chill" },
+        { label: "🎹 Jazz or Blues", value: "jazz_relax" },
+        { label: "🌌 Ambient, Electronic, or New Age", value: "ambient" },
+        { label: "🎻 Classical or Instrumental scores", value: "complex_relax" },
+        { label: "🌾 Country or Western music", value: "country" },
+        { label: "❓ Other", value: "other_relax" }
+      ]},
+      { id: "q10", icon: "🤝", text: "Do you enjoy choosing the music when you are with a group of friends?", options: [
+        { label: "📣 Yes, I like sharing my music", value: "extravert" },
+        { label: "🤝 Only if I'm sure everyone will like it", value: "agreeable" },
+        { label: "🤐 I prefer to let someone else choose", value: "introvert" }
+      ]},
+      { id: "q11", icon: "⛈️", text: "Do you listen to emotional or moody music when you are feeling down?", options: [
+        { label: "🌧️ Frequently—it helps me process feelings", value: "neurotic_high" },
+        { label: "🌤️ Sometimes, depending on the day", value: "neurotic_mid" },
+        { label: "☀️ Rarely—I use music to improve my mood", value: "neurotic_low" }
+      ]},
+      { id: "q12", icon: "🚜", text: "What is your interest level in Country music?", options: [
+        { label: "🤠 I enjoy the storytelling and the style", value: "country_high" },
+        { label: "🎸 I like a few specific songs or artists", value: "country_mid" },
+        { label: "🙅 I have little to no interest in it", value: "country_low" }
+      ]},
+      { id: "q13", icon: "🔄", text: "How often do you listen to the same small set of songs?", options: [
+        { label: "🔁 Very often—I like the familiar", value: "habit_fixed" },
+        { label: "📚 I listen to a lot of the same music, but I have a very large rotation", value: "habit_broad_stable" },
+        { label: "🆕 Rarely—I'm always looking for new music", value: "habit_open" }
+      ]},
+      { id: "q14", icon: "🗣️", text: "How would your peers describe your general temperament?", options: [
+        { label: "🍃 Gentle, kind, and at ease", value: "agreeable_gentle" },
+        { label: "🔥 Outgoing, direct, and energetic", value: "assertive" },
+        { label: "🔭 Observant, quiet, and thoughtful", value: "observant" }
+      ]},
+      { id: "q15", icon: "🔍", text: "How do you usually discover new music?", options: [
+        { label: "🤖 Algorithmic suggestions (Discover Weekly)", value: "algo_discovery" },
+        { label: "🎯 Searching within my favorite genres", value: "genre_discovery" },
+        { label: "🕵️ Searching for independent artists", value: "explorer" },
+        { label: "🌐 Listening to what is popular on the charts", value: "mainstream" },
+        { label: "📺 Radio, movies, or public spaces", value: "passive_discovery" },
+        { label: "💬 Suggestions from friends or family", value: "social_discovery" }
+      ]},
+      { id: "q16", icon: "🔊", text: "What is your typical volume level for listening?", options: [
+        { label: "📢 High—I want to be fully immersed", value: "intensity_high" },
+        { label: "🔉 Moderate—aware of my surroundings", value: "intensity_mid" },
+        { label: "🔈 Quiet—just background atmosphere", value: "intensity_low" }
+      ]},
+      { id: "q17", icon: "🔋", text: "How would you describe your typical energy level?", options: [
+        { label: "⚡ High—I am active and social", value: "extra_high" },
+        { label: "🧘 Lower—I prefer quiet environments", value: "extra_low" },
+        { label: "⚖️ Balanced—it depends on the situation", value: "extra_mid" }
+      ]},
+      { id: "q18", icon: "🎟️", text: "If you were to attend a concert, which type would you choose?", options: [
+        { label: "🏟️ A major stadium pop performance", value: "pop_live" },
+        { label: "🤘 An intense rock or rap show", value: "intense_live" },
+        { label: "🎻 A formal jazz or classical performance", value: "soph_live" },
+        { label: "🌳 A relaxed outdoor folk or reggae festival", value: "mellow_live" }
+      ]},
+      { id: "q19", icon: "🆔", text: "To what extent does your musical taste reflect your identity?", options: [
+        { label: "🎖️ Significantly—it is core to who I am", value: "identity_high" },
+        { label: "🎗️ Somewhat—it matters, but isn't my main focus", value: "identity_mid" },
+        { label: "⚪ Minimally—it is just something I listen to", value: "identity_low" }
+      ]},
+      { id: "q20", icon: "🚻", text: "What is your gender?", options: [
+        { label: "🔹 Male", value: "male" },
+        { label: "🔸 Female", value: "female" },
+        { label: "▫️ Other / Prefer not to say", value: "other" }
+      ]}
+    ];
+
+    let currentStep = 0;
+    let answers = {};
+    let selectedOption = null;
+
+    function renderIntro() {
+      const app = document.getElementById('app');
+      app.innerHTML = `
+        <div class="card">
+          <h1>Music & Mind</h1>
+          <p class="subtitle">A survey to assess your personality based on your taste in music.</p>
+          <p class="instruction">
+            Answer the questions honestly. <br>
+            Choose the answer that is closest to what fits for you.
+          </p>
+          <button class="btn-primary" onclick="startQuiz()">Start Survey</button>
+        </div>
+      `;
+    }
+
+    function startQuiz() {
+      currentStep = 0;
+      answers = {};
+      renderQuestion();
+    }
+
+    function renderQuestion() {
+      const q = QUESTIONS[currentStep];
+      const progress = ((currentStep) / QUESTIONS.length) * 100;
+      const app = document.getElementById('app');
+      app.innerHTML = `
+        <div class="card">
+          <div class="progress-container">
+            <div class="progress-bg"><div class="progress-fill" style="width: ${progress}%"></div></div>
+            <div class="progress-text">Question ${currentStep + 1} of ${QUESTIONS.length}</div>
+          </div>
+          <div class="question-box">
+            <div class="question-header">
+              <div class="question-icon">${q.icon}</div>
+              <h2>${q.text}</h2>
+            </div>
+            <div class="option-list">
+              ${q.options.map(opt => `
+                <button class="option-btn ${selectedOption === opt.value ? 'selected' : ''}" 
+                        onclick="selectOption('${opt.value}')">
+                  ${opt.label}
+                </button>
+              `).join('')}
+            </div>
+            <button class="btn-primary" ${selectedOption ? '' : 'disabled'} onclick="nextQuestion()">
+              ${currentStep === QUESTIONS.length - 1 ? 'Get Results' : 'Continue'}
+            </button>
+          </div>
+        </div>
+      `;
+    }
+
+    window.selectOption = (val) => { selectedOption = val; renderQuestion(); };
+
+    window.nextQuestion = () => {
+      answers[QUESTIONS[currentStep].id] = selectedOption;
+      selectedOption = null;
+      if (currentStep < QUESTIONS.length - 1) {
+        currentStep++;
+        renderQuestion();
+      } else {
+        processResults();
+      }
+    };
+
+    function processResults() {
+      const app = document.getElementById('app');
+      app.innerHTML = `
+        <div class="card loader">
+          <div class="spinner"></div>
+          <h2>Analyzing your results...</h2>
+          <p style="color: #b3b3b3">Mapping your responses to psychological research.</p>
+        </div>
+      `;
+
+      const prompt = `Analyze this student music profile based on their survey answers: ${JSON.stringify(answers)}. 
+      Refer to the research of Adrian North, David Greenberg, and Spotify Research.
+      
+      Respond with ONLY a JSON object:
+      {
+        "headline": "A title with an emoji",
+        "intro": "2 sentences of clear summary.",
+        "personalitySummary": "A 3-4 sentence character deep dive connecting musical behaviors to actual character traits.",
+        "traits": {
+          "🗺️ Open-Mindedness": {"label": "Curious", "score": 85, "insight": "Explanation..."},
+          "📋 Organization": {"label": "Structured", "score": 40, "insight": "Explanation..."},
+          "📣 Social Connection": {"label": "Outgoing", "score": 90, "insight": "Explanation..."},
+          "❤️ Empathy": {"label": "Compassionate", "score": 75, "insight": "Explanation..."},
+          "🔍 Introspection": {"label": "Thoughtful", "score": 60, "insight": "Explanation..."}
+        },
+        "researchNote": "Citation of North, Greenberg, or Spotify."
+      }`;
+
+      callGemini(prompt);
+    }
+
+    async function callGemini(promptText) {
+      // THE API KEY
+      // Note: For the preview button in this environment to work, apiKey must be "" (empty string).
+      // The environment will automatically provide a valid key for the preview.
+      // For your external Netlify/GitHub deployment, you should restore your key: 
+      // const apiKey = "AIzaSyBYz_03p35at10nsVdYWV7b3Hb7i3ddtdE";
+      const apiKey = ""; 
+      
+      // Supported model name for this preview environment. 
+      // For your external deployment with your own key, use "gemini-1.5-flash".
+      const modelName = "gemini-2.5-flash-preview-09-2025";
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
+
+      const fetchWithRetry = async (url, options, retries = 5, delay = 1000) => {
+        for (let i = 0; i < retries; i++) {
+          try {
+            const response = await fetch(url, options);
+            if (!response.ok) {
+              const errorText = await response.text();
+              throw new Error(`API Error ${response.status}: ${errorText}`);
+            }
+            return await response.json();
+          } catch (e) {
+            if (i === retries - 1) throw e;
+            await new Promise(resolve => setTimeout(resolve, delay * Math.pow(2, i)));
+          }
+        }
+      };
+
+      try {
+        const result = await fetchWithRetry(
+          url,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [{
+                parts: [{ text: promptText }]
+              }],
+              systemInstruction: {
+                parts: [{ text: "You are a music psychology expert. Respond in JSON format only. Use everyday language. Include emojis." }]
+              }
+            })
+          }
+        );
+
+        const textResponse = result.candidates?.[0]?.content?.parts?.[0]?.text;
+        
+        if (textResponse) {
+          renderResults(textResponse);
+        } else {
+          throw new Error("No response from AI brain.");
+        }
+      } catch (e) {
+        console.error("API Error:", e);
+        handleError(e.message);
+      }
+    }
+
+    function renderResults(rawJson) {
+      let data;
+      try {
+        const start = rawJson.indexOf('{');
+        const end = rawJson.lastIndexOf('}');
+        if (start === -1 || end === -1) throw new Error("Format error.");
+        data = JSON.parse(rawJson.substring(start, end + 1));
+      } catch (e) {
+        handleError("The AI sent a scrambled message. Please try again.");
+        return;
+      }
+
+      const app = document.getElementById('app');
+      app.innerHTML = `
+        <div class="card">
+          <span class="persona-tag">Analysis Result</span>
+          <h1 style="color: var(--spotify-green)">${data.headline}</h1>
+          <p class="subtitle">${data.intro}</p>
+          
+          <div class="personality-summary">
+            ${data.personalitySummary}
+          </div>
+
+          <div class="trait-list">
+            ${Object.entries(data.traits).map(([name, info]) => `
+              <div class="trait-card">
+                <div class="trait-header">
+                  <span class="trait-label">${name}</span>
+                  <span class="trait-score">${info.score}%</span>
+                </div>
+                <div class="bar-bg"><div class="bar-fill" style="width: ${info.score}%"></div></div>
+                <p class="insight-text">${info.insight}</p>
+              </div>
+            `).join('')}
+          </div>
+
+          <div class="research-note">
+            <strong>What the research says:</strong>
+            ${data.researchNote}
+          </div>
+
+          <button class="btn-primary" style="margin-top: 30px" onclick="renderIntro()">Retake Survey</button>
+        </div>
+      `;
+    }
+
+    function handleError(msg) {
+      document.getElementById('app').innerHTML = `
+        <div class="card">
+          <h2>Analysis Error</h2>
+          <p style="color: var(--text-dim); line-height: 1.5;">${msg}</p>
+          <button class="btn-primary" style="margin-top: 20px" onclick="renderIntro()">Try Again</button>
+        </div>
+      `;
+    }
+
+    window.onload = renderIntro;
+  </script>
+</body>
+</html>
